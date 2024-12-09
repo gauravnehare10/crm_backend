@@ -11,17 +11,19 @@ user = APIRouter()
 
 templates = Jinja2Templates(directory="templates")
 
-@user.post("/register", response_class= JSONResponse)
+@user.post("/register", response_class=JSONResponse)
 async def add_user(request: User):
     try:
-        print(request)
+        request.username = request.username.lower()
         user = conn.user.mortgage_details.insert_one(dict(request))
+        
         user_details = {
-        "name": request.name,
-        "username": request.username,
-        "email": request.email,
-        "contactnumber": request.contactnumber
+            "name": request.name,
+            "username": request.username.lower(),
+            "email": request.email,
+            "contactnumber": request.contactnumber
         }
+        
         return {"user_details": user_details}
     
     except Exception as e:
