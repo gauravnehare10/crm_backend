@@ -18,6 +18,11 @@ class Token(BaseModel):
     user_details: Optional[Dict[str, str]]
     mortgage: Optional[Dict[str, str]]
 
+class AdminToken(BaseModel):
+    access_token: str
+    token_type: str
+    admin_details: Optional[Dict[str, str]]
+
 class UserUpdate(BaseModel):
     username: str
     name: str
@@ -31,9 +36,29 @@ class UserUpdate(BaseModel):
 
 
 class MortgageDetails(BaseModel):
-    hasMortgage: bool
     username: str
+    hasMortgage: bool
+    mortgageCount: Optional[str] = None
+    resOrBuyToLet: Optional[str] = None
+    mortgageType: Optional[str] = None
+    mortgageAmount: Optional[str] = None
+    renewalDate: Optional[str] = None
+    isLookingForMortgage: Optional[bool] = None
+    newMortgageAmount: Optional[str] = None
+    ownershipType: Optional[str] = None
+    depositeAmt: Optional[str] = None
+    annualIncome: Optional[str] = None
+    foundProperty: Optional[str] = None
+
+class UserMortgageDetails(BaseModel):
+    id: str
+    username: str
+    name: str
+    email: str
+    contactnumber: int
+    hasMortgage: bool
     mortgageCount: Optional[int] = None
+    resOrBuyToLet: Optional[str] = None
     mortgageType: Optional[str] = None
     mortgageAmount: Optional[str] = None
     renewalDate: Optional[str] = None
@@ -41,4 +66,7 @@ class MortgageDetails(BaseModel):
     newMortgageAmount: Optional[str] = None
     ownershipType: Optional[str] = None
     annualIncome: Optional[str] = None
+
+    class Config:
+        from_attributes = True
 

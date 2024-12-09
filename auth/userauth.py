@@ -37,3 +37,15 @@ def authenticate_user(username: str, password: str):
     if not verify_password(password, hashed_password):
         return False
     return user
+
+
+def authenticate_admin(username: str, password: str):
+    admin = conn.user.admin_details.find_one({"username": username})
+    if not admin:
+        return False
+    # If user password is plaintext, hash it (not recommended for production)
+    hashed_password = pwd_context.hash(admin["password"]) if "hashed_password" not in admin else admin["hashed_password"]
+    print(password, hashed_password)
+    if not verify_password(password, hashed_password):
+        return False
+    return admin
