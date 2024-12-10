@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
 class User(BaseModel):
     name: str
@@ -70,3 +70,33 @@ class UserMortgageDetails(BaseModel):
     class Config:
         from_attributes = True
 
+
+
+class ExistingMortgageDetail(BaseModel):
+    id: str  # Serialized `_id` from MongoDB
+    hasMortgage: bool
+    mortgageCount: str
+    resOrBuyToLet: str
+    mortgageType: str
+    mortgageAmount: str
+    renewalDate: Optional[str]
+
+
+class NewMortgageRequest(BaseModel):
+    id: str  # Serialized `_id` from MongoDB
+    isLookingForMortgage: bool
+    newMortgageAmount: str
+    ownershipType: str
+    annualIncome: str
+    depositeAmt: str
+    foundProperty: str
+
+
+class AllUser(BaseModel):
+    id: str  # Serialized `_id` from MongoDB
+    name: str
+    username: str
+    email: str
+    contactnumber: int
+    mortgage_details: Optional[List[ExistingMortgageDetail]]
+    new_mortgage_requests: Optional[List[NewMortgageRequest]]
