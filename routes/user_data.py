@@ -11,23 +11,25 @@ user = APIRouter()
 
 templates = Jinja2Templates(directory="templates")
 
-@user.post("/register", response_class=JSONResponse)
-async def add_user(request: User):
-    try:
-        request.username = request.username.lower()
-        user = conn.user.mortgage_details.insert_one(dict(request))
+# @user.post("/register", response_class=JSONResponse)
+# async def add_user(request: User):
+#     try:
         
-        user_details = {
-            "name": request.name,
-            "username": request.username.lower(),
-            "email": request.email,
-            "contactnumber": request.contactnumber
-        }
+#         request.username = request.username.lower()
+#         user = conn.user.mortgage_details.insert_one(dict(request))
         
-        return {"user_details": user_details}
+#         user_details = {
+#             "name": request.name,
+#             "username": request.username.lower(),
+#             "email": request.email,
+#             "contactnumber": request.contactnumber
+#         }
+        
+#         return {"user_details": user_details}
     
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
     
 
 @user.post("/login", response_model=Token)
@@ -47,17 +49,7 @@ async def login(login_data: LoginModel):
     }
     mortgage = {
         "hasMortgage": str(user.get("hasMortgage")),
-        "mortgageCount": str(user.get("mortgageCount", "")) if user.get("mortgageCount") is not None else "",
-        "resOrBuyToLet": str(user.get("resOrBuyToLet", "")) if user.get("resOrBuyToLet") is not None else "",
-        "mortgageType": str(user.get("mortgageType", "")) if user.get("mortgageType") is not None else "",
-        "mortgageAmount": str(user.get("mortgageAmount", "")) if user.get("mortgageAmount") is not None else "",
-        "renewalDate": str(user.get("renewalDate", "")) if user.get("renewalDate") is not None else "",
         "isLookingForMortgage": str(user.get("isLookingForMortgage")),
-        "newMortgageAmount": str(user.get("newMortgageAmount", "")) if user.get("newMortgageAmount") is not None else "",
-        "ownershipType": str(user.get("ownershipType", "")) if user.get("ownershipType") is not None else "",
-        "depositeAmt": str(user.get("depositeAmt", "")) if user.get("depositeAmt") is not None else "",
-        "annualIncome": str(user.get("annualIncome", "")) if user.get("annualIncome") is not None else "",
-        "foundProperty": str(user.get("foundProperty")),
         }
     return {"access_token": access_token, "token_type": "bearer", "user_details": user_details, "mortgage": mortgage}
 
@@ -90,6 +82,21 @@ async def read_item():
     data = conn.user.mortgage_details.find({})
     dt = fetch_all_items(data)
     return {"response": dt}
+
+@user.get("/counts")
+async def get_counts():
+    # Total entries count
+    total_count = conn.user.mortgage_details.count_documents({})
+
+    has_mortgage_count = conn.user.mortgage_details.count_documents({"hasMortgage": True})
+
+    is_looking_for_mortgage_count = conn.user.mortgage_details.count_documents({"isLookingForMortgage": True})
+
+    return {
+        "total_count": total_count,
+        "has_mortgage_count": has_mortgage_count,
+        "is_looking_for_mortgage_count": is_looking_for_mortgage_count,
+    }
 
 @user.get("/users/{userId}")
 async def get_user(userId: str):
