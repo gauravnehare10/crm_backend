@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import JSONResponse
 from config.db import conn
-from models.model import User, LoginModel, Token, MortgageDetails, AdminToken,  UserUpdate, AllUser
+from models.model import *
 from auth.userauth import authenticate_user, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, authenticate_admin
 from datetime import timedelta
 from bson import ObjectId
@@ -32,6 +32,8 @@ templates = Jinja2Templates(directory="templates")
 #     except Exception as e:
 #         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
+
+############################### USER REGISTRATION ################################
 @user.post("/register", response_class=JSONResponse)
 async def add_user(request: User):
     try:
@@ -71,6 +73,8 @@ async def add_user(request: User):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
+
+################################ USER LOGIN #####################################
 @user.post("/login", response_model=Token)
 async def login(login_data: LoginModel):
     user = authenticate_user(login_data.username, login_data.password)
@@ -103,6 +107,8 @@ async def login(login_data: LoginModel):
 #         )
 #         return {"message": "User data updated successfully!", "data": details}
 
+
+################################# ADD RESPONSE #######################################
 @user.post("/add_mortgage_data/")
 async def add_mortgage_data(data: MortgageDetails):
     try:
@@ -164,35 +170,31 @@ def serialize_mongo_document(document):
     return document
 
 
-
+############################### MyClients.js #################################
 @user.get("/users", response_model=List[AllUser])
 async def get_all_users():
     users = conn.user.mortgage_details.find({})
     all_users = fetch_all_items(users)
     return serialize_mongo_document(all_users)
 
-# @user.get("/users")
-# async def read_item():
-#     print(conn.list_database_names())
-#     print(conn["user"].list_collection_names())
-#     data = conn.user.mortgage_details.find({})
-#     dt = fetch_all_items(data)
-#     return {"response": dt}
 
-@user.get("/counts")
-async def get_counts():
-    # Total entries count
-    total_count = conn.user.mortgage_details.count_documents({})
+################################ COUNTS BEFORE #############################################
+# @user.get("/counts")
+# async def get_counts():
+#     # Total entries count
+#     total_count = conn.user.mortgage_details.count_documents({})
 
-    has_mortgage_count = conn.user.mortgage_details.count_documents({"hasMortgage": True})
+#     has_mortgage_count = conn.user.mortgage_details.count_documents({"hasMortgage": True})
 
-    is_looking_for_mortgage_count = conn.user.mortgage_details.count_documents({"isLookingForMortgage": True})
+#     is_looking_for_mortgage_count = conn.user.mortgage_details.count_documents({"isLookingForMortgage": True})
 
-    return {
-        "total_count": total_count,
-        "has_mortgage_count": has_mortgage_count,
-        "is_looking_for_mortgage_count": is_looking_for_mortgage_count,
-    }
+#     return {
+#         "total_count": total_count,
+#         "has_mortgage_count": has_mortgage_count,
+#         "is_looking_for_mortgage_count": is_looking_for_mortgage_count,
+#     }
+
+
 
 def serialize_document(document):
     if isinstance(document, ObjectId):
@@ -204,18 +206,19 @@ def serialize_document(document):
     else:
         return document
 
-@user.get("/users/{userId}")
-async def get_user(userId: str):
-    try:
-        user_id = ObjectId(userId)
-        user = conn.user.mortgage_details.find_one({"_id": user_id})
-        if user is None:
-            raise HTTPException(status_code=404, detail="User not found")
+################################# UserDetails.js ##################################
+# @user.get("/users/{userId}")
+# async def get_user(userId: str):
+#     try:
+#         user_id = ObjectId(userId)
+#         user = conn.user.mortgage_details.find_one({"_id": user_id})
+#         if user is None:
+#             raise HTTPException(status_code=404, detail="User not found")
 
-        user = serialize_document(user)
-        return user
-    except Exception as e:
-        raise HTTPException(status_code=400, detail="Invalid user ID")
+#         user = serialize_document(user)
+#         return user
+#     except Exception as e:
+#         raise HTTPException(status_code=400, detail="Invalid user ID")
 
 
 
@@ -269,3 +272,88 @@ async def login(login_data: LoginModel):
 #         raise HTTPException(status_code=404, detail="Updated user not found")
 #     except Exception as e:
 #         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+###############################DELETE RESPONSE #######################################
+
+@user.delete("/delete-response/{response_id}")
+async def delete_response(response_id: str, type: str):
+    collection = "mortgage_details" if type == "existing" else "new_mortgage_requests"
+    result = conn.user.mortgage_details.update_one(
+        {collection: {"$elemMatch": {"_id": ObjectId(response_id)}}},
+        {"$pull": {collection: {"_id": ObjectId(response_id)}}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Response not found")
+    return {"message": "Response deleted successfully"}
+
+
+################################ COUNTS AFTER #############################################
+
+@user.get("/count_mortgages")
+async def count_mortgages():
+    has_mortgage_count = conn.user.mortgage_details.aggregate([
+        {"$unwind": "$mortgage_details"},
+        {"$match": {"mortgage_details.hasMortgage": True}},
+        {"$count": "has_mortgage_count"}
+    ])
+
+    has_mortgage_count = list(has_mortgage_count)
+    has_mortgage_count = has_mortgage_count[0]["has_mortgage_count"] if has_mortgage_count else 0
+
+    # Count responses where isLookingForMortgage is true
+    looking_for_mortgage_count = conn.user.mortgage_details.aggregate([
+        {"$unwind": "$new_mortgage_requests"},
+        {"$match": {"new_mortgage_requests.isLookingForMortgage": True}},
+        {"$count": "looking_for_mortgage_count"}
+    ])
+
+    looking_for_mortgage_count = list(looking_for_mortgage_count)
+    looking_for_mortgage_count = looking_for_mortgage_count[0]["looking_for_mortgage_count"] if looking_for_mortgage_count else 0
+
+    total_count = conn.user.mortgage_details.count_documents({})
+    return JSONResponse(content={
+        "total_count": total_count,
+        "has_mortgage_count": has_mortgage_count,
+        "looking_for_mortgage_count": looking_for_mortgage_count
+    })
+
+########################## UPDATING DATA FROM ADMIN #############################
+
+@user.put("/users/{user_id}")
+async def update_user(user_id: str, user_data: UserUpdate):
+    object_id = ObjectId(user_id)
+    result = conn.user.mortgage_details.update_one(
+        {"_id": object_id},
+        {"$set": user_data.dict()}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"message": "User updated successfully"}
+
+
+@user.put("/update-mortgage/{user_id}")
+async def update_mortgage(user_id: str, mortgage: ExistingMortgageDetails):
+    user = conn.user.mortgage_details.find_one({"_id": ObjectId(user_id)})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    updated = conn.user.mortgage_details.update_one(
+        {"_id": ObjectId(user_id), "mortgage_details.id": mortgage.mortgage_id},
+        {
+            "$set": {
+                "mortgage_details.$.hasMortgage": mortgage.hasMortgage,
+                "mortgage_details.$.mortgageType": mortgage.mortgageType,
+                "mortgage_details.$.mortgageCount": mortgage.mortgageCount,
+                "mortgage_details.$.mortgageAmount": mortgage.mortgageAmount,
+                "mortgage_details.$.resOrBuyToLet": mortgage.resOrBuyToLet,
+                "mortgage_details.$.renewalDate": mortgage.renewalDate,
+            }
+        },
+    )
+
+    if updated.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Mortgage details not found")
+    
+    return {"message": "Mortgage details updated successfully"}
