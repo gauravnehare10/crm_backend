@@ -31,6 +31,8 @@ class MortgageDetails(BaseModel):
     resOrBuyToLet: Optional[str] = None
     mortgageType: Optional[str] = None
     mortgageAmount: Optional[str] = None
+    mortgageAmount2: Optional[str] = None
+    mortgageAmount3: Optional[str] = None
     renewalDate: Optional[str] = None
     isLookingForMortgage: Optional[bool] = None
     newMortgageAmount: Optional[str] = None
@@ -39,26 +41,6 @@ class MortgageDetails(BaseModel):
     annualIncome: Optional[str] = None
     foundProperty: Optional[str] = None
 
-# class UserMortgageDetails(BaseModel):
-#     id: str
-#     username: str
-#     name: str
-#     email: str
-#     contactnumber: int
-#     hasMortgage: bool
-#     mortgageCount: Optional[int] = None
-#     resOrBuyToLet: Optional[str] = None
-#     mortgageType: Optional[str] = None
-#     mortgageAmount: Optional[str] = None
-#     renewalDate: Optional[str] = None
-#     isLookingForMortgage: Optional[bool] = None
-#     newMortgageAmount: Optional[str] = None
-#     ownershipType: Optional[str] = None
-#     annualIncome: Optional[str] = None
-
-    # class Config:
-    #     from_attributes = True
-
 
 
 class ExistingMortgageDetails(BaseModel):
@@ -66,8 +48,10 @@ class ExistingMortgageDetails(BaseModel):
     hasMortgage: bool
     mortgageCount: Optional[str] = None
     mortgageType: Optional[str] = None
-    fixedEndDate: Optional[str] = None
+    renewalDate: Optional[str] = None
     mortgageAmount: Optional[str] = None
+    mortgageAmount2: Optional[str] = None
+    mortgageAmount3: Optional[str] = None
     resOrBuyToLet: Optional[str] = None
 
 
@@ -94,4 +78,12 @@ class AllUser(BaseModel):
     contactnumber: int
     mortgage_details: Optional[List[ExistingMortgageDetails]] = []
     new_mortgage_requests: Optional[List[NewMortgageRequest]] = []
+
+
+class PasswordResetRequest(BaseModel):
+    email: str
+
+class PasswordChangeRequest(BaseModel):
+    token: str
+    new_password: str
     

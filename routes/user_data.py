@@ -3,35 +3,19 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import JSONResponse
 from config.db import conn
 from models.model import *
-from auth.userauth import authenticate_user, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, authenticate_admin
+from auth.userauth import *
 from datetime import timedelta
 from bson import ObjectId
 from typing import List
-
+import smtplib
+from email_config.econfig import email_address, email_password, msg
+from jose import jwt, JWTError
+from email.message import EmailMessage
+from schemas.schema import *
 
 user = APIRouter()
 
 templates = Jinja2Templates(directory="templates")
-
-# @user.post("/register", response_class=JSONResponse)
-# async def add_user(request: User):
-#     try:
-        
-#         request.username = request.username.lower()
-#         user = conn.user.mortgage_details.insert_one(dict(request))
-        
-#         user_details = {
-#             "name": request.name,
-#             "username": request.username.lower(),
-#             "email": request.email,
-#             "contactnumber": request.contactnumber
-#         }
-        
-#         return {"user_details": user_details}
-    
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
-
 
 ############################### USER REGISTRATION ################################
 @user.post("/register", response_class=JSONResponse)
@@ -67,7 +51,30 @@ async def add_user(request: User):
             "email": request.email,
             "contactnumber": request.contactnumber
         }
-        
+        msg["Subject"] = "Registration Successful"
+        msg["From"] = email_address
+        msg["To"] = request.email
+        msg.set_content(
+            f"""\
+                Name: {request.name}
+                Email: {request.email}
+                
+                Dear {request.username},
+
+                Congratulations! Your registration has been successfully completed.
+
+                Thank you for joining us. We're excited to have you on board. If you have any questions or need assistance, feel free to contact our support team.\n
+
+                Best regards,
+                AAI Financials
+                gauravnehare10@gmail.com
+            """
+        )
+
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+            smtp.login(email_address, email_password)
+            smtp.send_message(msg)
+
         return {"user_details": user_details}
     
     except Exception as e:
@@ -81,7 +88,7 @@ async def login(login_data: LoginModel):
     if not user:
         raise HTTPException(status_code=401, detail="Invalid username or password")
     
-    # Create access token
+    # Create access token 
     access_token = create_access_token(data={"sub": login_data.username}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     user_details = {
         "id": str(user["_id"]),
@@ -95,17 +102,6 @@ async def login(login_data: LoginModel):
         "isLookingForMortgage": str(user.get("isLookingForMortgage")),
         }
     return {"access_token": access_token, "token_type": "bearer", "user_details": user_details, "mortgage": mortgage}
-
-# @user.put("/mortgage/{username}")
-# async def update_mortgage_details(username: str, details: MortgageDetails):
-#     existing_user = conn.user.mortgage_details.find_one({"username": username})
-#     print(dict(existing_user))
-#     if existing_user:
-#         conn.user.mortgage_details.update_one(
-#             {"username": username},
-#             {"$set": details.dict()}
-#         )
-#         return {"message": "User data updated successfully!", "data": details}
 
 
 ################################# ADD RESPONSE #######################################
@@ -122,6 +118,8 @@ async def add_mortgage_data(data: MortgageDetails):
                 "resOrBuyToLet": data.resOrBuyToLet,
                 "mortgageType": data.mortgageType,
                 "mortgageAmount": data.mortgageAmount,
+                "mortgageAmount2": data.mortgageAmount2,
+                "mortgageAmount3": data.mortgageAmount3,
                 "renewalDate": data.renewalDate,
             }
             # Append to mortgage_details array
@@ -154,72 +152,12 @@ async def add_mortgage_data(data: MortgageDetails):
 
 # Admin
 
-def fetch_all_items(cursor):
-    items = list(cursor)
-    for item in items:
-        item["id"] = str(item["_id"])
-    return items
-
-def serialize_mongo_document(document):
-    if isinstance(document, list):
-        return [serialize_mongo_document(doc) for doc in document]
-    if isinstance(document, dict):
-        document["id"] = str(document["_id"]) if "_id" in document else None
-        del document["_id"]
-        return {key: (str(value) if isinstance(value, ObjectId) else serialize_mongo_document(value)) for key, value in document.items()}
-    return document
-
-
 ############################### MyClients.js #################################
 @user.get("/users", response_model=List[AllUser])
 async def get_all_users():
     users = conn.user.mortgage_details.find({})
     all_users = fetch_all_items(users)
     return serialize_mongo_document(all_users)
-
-
-################################ COUNTS BEFORE #############################################
-# @user.get("/counts")
-# async def get_counts():
-#     # Total entries count
-#     total_count = conn.user.mortgage_details.count_documents({})
-
-#     has_mortgage_count = conn.user.mortgage_details.count_documents({"hasMortgage": True})
-
-#     is_looking_for_mortgage_count = conn.user.mortgage_details.count_documents({"isLookingForMortgage": True})
-
-#     return {
-#         "total_count": total_count,
-#         "has_mortgage_count": has_mortgage_count,
-#         "is_looking_for_mortgage_count": is_looking_for_mortgage_count,
-#     }
-
-
-
-def serialize_document(document):
-    if isinstance(document, ObjectId):
-        return str(document)
-    elif isinstance(document, list):
-        return [serialize_document(item) for item in document]
-    elif isinstance(document, dict):
-        return {key: serialize_document(value) for key, value in document.items()}
-    else:
-        return document
-
-################################# UserDetails.js ##################################
-# @user.get("/users/{userId}")
-# async def get_user(userId: str):
-#     try:
-#         user_id = ObjectId(userId)
-#         user = conn.user.mortgage_details.find_one({"_id": user_id})
-#         if user is None:
-#             raise HTTPException(status_code=404, detail="User not found")
-
-#         user = serialize_document(user)
-#         return user
-#     except Exception as e:
-#         raise HTTPException(status_code=400, detail="Invalid user ID")
-
 
 
 ############################### RESPONSE #################################### 
@@ -254,28 +192,8 @@ async def login(login_data: LoginModel):
     return {"access_token": access_token, "token_type": "bearer", "admin_details": admin_details}
 
 
-# @user.put("/user_update/{user_id}/")
-# async def update_user(user_id: str, user_data: UserUpdate):
-#     try:
-#         update_data = {k: v for k, v in user_data.dict().items() if v is not None}
 
-#         result = await conn.user.mortgage_details.update_one({"_id": user_id}, {"$set": update_data})
-        
-#         if result.matched_count == 0:
-#             raise HTTPException(status_code=404, detail="User not found")
-        
-#         updated_user = await conn.user.mortgage_details.find_one({"_id": user_id})
-#         if updated_user:
-#             updated_user["_id"] = str(updated_user["_id"])
-#             return updated_user
-
-#         raise HTTPException(status_code=404, detail="Updated user not found")
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
-
-
-
-###############################DELETE RESPONSE #######################################
+############################### DELETE RESPONSE #######################################
 
 @user.delete("/delete-response/{response_id}")
 async def delete_response(response_id: str, type: str):
@@ -319,7 +237,7 @@ async def count_mortgages():
         "looking_for_mortgage_count": looking_for_mortgage_count
     })
 
-########################## UPDATING DATA FROM ADMIN #############################
+########################## UPDATING DATA #############################
 
 @user.put("/users/{user_id}")
 async def update_user(user_id: str, user_data: UserUpdate):
@@ -339,16 +257,57 @@ async def update_mortgage(user_id: str, mortgage: ExistingMortgageDetails):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # Build the update payload dynamically
+    update_payload = {
+        "mortgage_details.$.hasMortgage": mortgage.hasMortgage,
+        "mortgage_details.$.mortgageType": mortgage.mortgageType,
+        "mortgage_details.$.mortgageCount": mortgage.mortgageCount,
+        "mortgage_details.$.mortgageAmount": mortgage.mortgageAmount,
+        "mortgage_details.$.resOrBuyToLet": mortgage.resOrBuyToLet,
+        "mortgage_details.$.renewalDate": mortgage.renewalDate,
+    }
+
+    # Add or clear additional mortgage amounts based on mortgageCount
+    if mortgage.mortgageCount == "2":
+        update_payload["mortgage_details.$.mortgageAmount2"] = mortgage.mortgageAmount2
+        update_payload["mortgage_details.$.mortgageAmount3"] = None
+    elif mortgage.mortgageCount == "3":
+        update_payload["mortgage_details.$.mortgageAmount2"] = mortgage.mortgageAmount2
+        update_payload["mortgage_details.$.mortgageAmount3"] = mortgage.mortgageAmount3
+    else:  # For "1" or other values
+        update_payload["mortgage_details.$.mortgageAmount2"] = None
+        update_payload["mortgage_details.$.mortgageAmount3"] = None
+
+    # Perform the update operation
     updated = conn.user.mortgage_details.update_one(
-        {"_id": ObjectId(user_id), "mortgage_details.id": mortgage.mortgage_id},
+        {"_id": ObjectId(user_id), "mortgage_details._id": ObjectId(mortgage.id)},
+        {"$set": update_payload},
+    )
+
+    if updated.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Mortgage details not found")
+
+    return {"message": "Mortgage details updated successfully"}
+
+
+@user.put("/update-new-mortgage/{user_id}")
+async def update_mortgage(user_id: str, mortgage: NewMortgageRequest):
+    print(mortgage)
+    user = conn.user.mortgage_details.find_one({"_id": ObjectId(user_id)})
+    print(user)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    updated = conn.user.mortgage_details.update_one(
+        {"_id": ObjectId(user_id), "new_mortgage_requests._id": ObjectId(mortgage.id)},
         {
             "$set": {
-                "mortgage_details.$.hasMortgage": mortgage.hasMortgage,
-                "mortgage_details.$.mortgageType": mortgage.mortgageType,
-                "mortgage_details.$.mortgageCount": mortgage.mortgageCount,
-                "mortgage_details.$.mortgageAmount": mortgage.mortgageAmount,
-                "mortgage_details.$.resOrBuyToLet": mortgage.resOrBuyToLet,
-                "mortgage_details.$.renewalDate": mortgage.renewalDate,
+                "new_mortgage_requests.$.isLookingForMortgage": mortgage.isLookingForMortgage,
+                "new_mortgage_requests.$.newMortgageAmount": mortgage.newMortgageAmount,
+                "new_mortgage_requests.$.ownershipType": mortgage.ownershipType,
+                "new_mortgage_requests.$.annualIncome": mortgage.annualIncome,
+                "new_mortgage_requests.$.depositeAmt": mortgage.depositeAmt,
+                "new_mortgage_requests.$.foundProperty": mortgage.foundProperty,
             }
         },
     )
@@ -357,3 +316,79 @@ async def update_mortgage(user_id: str, mortgage: ExistingMortgageDetails):
         raise HTTPException(status_code=404, detail="Mortgage details not found")
     
     return {"message": "Mortgage details updated successfully"}
+
+
+########################## FORGOT PASSWORD #############################
+
+def send_email(to_email: str, reset_link: str):
+    """
+    Send the password reset link via email.
+    """
+    msg = EmailMessage()
+    msg["Subject"] = "Reset Your Password"
+    msg["From"] = email_address
+    msg["To"] = to_email
+    msg.set_content(f"""
+    Hello,
+
+    You requested to reset your password. Click the link below to reset it:
+    {reset_link}
+
+    This link will expire in {RESET_TOKEN_EXPIRE_MINUTES} minutes.
+
+    If you did not request a password reset, please ignore this email.
+
+    Best regards,
+    Your App Team
+    """)
+    
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+        smtp.login(email_address, email_password)
+        smtp.send_message(msg)
+
+@user.post("/password-reset-request")
+async def password_reset_request(request: PasswordResetRequest):
+    """
+    Handle password reset requests.
+    """
+    email = request.email
+    user = conn.user.mortgage_details.find_one({"email": email})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user_id = str(user["_id"])
+    token = create_reset_token(user_id)
+    reset_link = f"http://localhost:3000/reset-password?token={token}"
+    send_email(email, reset_link)
+
+    return {"message": "Password reset link sent successfully."}
+    
+
+@user.post("/password-change")
+async def password_change(change_request: PasswordChangeRequest):
+    token = change_request.token
+    new_password = change_request.new_password
+
+    try:
+        # Decode token to get the username
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        userID: str = payload.get("sub")
+        if userID is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired")
+    except jwt.JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    # Find user and update password
+    user = conn.user.mortgage_details.find_one({"_id": ObjectId(userID)})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Hash the new password and update it in the database
+    hashed_password = pwd_context.hash(new_password)
+    conn.user.mortgage_details.update_one(
+        {"_id": ObjectId(userID)}, {"$set": {"password": new_password}}
+    )
+
+    return {"message": "Password has been updated successfully."}

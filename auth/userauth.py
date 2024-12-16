@@ -1,14 +1,19 @@
+from fastapi import Depends, HTTPException, status
 from config.db import conn
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
-from jose import jwt
+from fastapi.security import OAuth2PasswordBearer
+from jose import jwt, JWTError
 
 SECRET_KEY = "your_secret_key"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
+RESET_TOKEN_EXPIRE_MINUTES = 60
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 hashed_password = pwd_context.hash("password")
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")  # Endpoint to get tokens (implement this if not already)
 
 def verify_password(plain_password, hashed_password):
     try:
@@ -49,3 +54,12 @@ def authenticate_admin(username: str, password: str):
     if not verify_password(password, hashed_password):
         return False
     return admin
+
+def create_reset_token(user_id: str):
+    """
+    Generate a JWT token for password reset.
+    """
+    expire = datetime.utcnow() + timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES)
+    to_encode = {"sub": user_id, "exp": expire}
+    token = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return token
