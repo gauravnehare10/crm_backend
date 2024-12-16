@@ -241,6 +241,24 @@ async def count_mortgages():
 
 @user.put("/users/{user_id}")
 async def update_user(user_id: str, user_data: UserUpdate):
+    existing_user_by_username = conn.user.mortgage_details.find_one(
+            {"username": user_data.username}
+        )
+    if existing_user_by_username:
+        raise HTTPException(
+            status_code=400,
+        detail="Username already exists."
+        )
+        
+    existing_user_by_email = conn.user.mortgage_details.find_one(
+        {"email": user_data.email}
+    )
+    if existing_user_by_email:
+        raise HTTPException(
+            status_code=400,
+            detail="Email already exists."
+        )
+    
     object_id = ObjectId(user_id)
     result = conn.user.mortgage_details.update_one(
         {"_id": object_id},
