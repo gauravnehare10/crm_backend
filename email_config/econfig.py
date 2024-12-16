@@ -1,7 +1,7 @@
 import smtplib
 from email.message import EmailMessage
 
-email_address = 'gauravnehare10@gmail.com'
-email_password = 'nevdjophgxjbotmd'
+email_address = 'aaifinancials1@gmail.com'
+email_password = 'cctcbjxxmmuseevf'
 
-msg = EmailMessage() 
+msg = EmailMessage()
