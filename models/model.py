@@ -30,6 +30,7 @@ class MortgageDetails(BaseModel):
     paymentMethod: Optional[str] = None
     estPropertyValue: Optional[str] = None
     mortgageAmount: Optional[str] = None
+    mortDepositAmount: Optional[str] = None
     mortgageType: Optional[str] = None
     productRateType: Optional[str] = None
     renewalDate: Optional[str] = None
@@ -51,6 +52,7 @@ class ExistingMortgageDetails(BaseModel):
     paymentMethod: Optional[str] = None
     estPropertyValue: Optional[str] = None
     mortgageAmount: Optional[str] = None
+    mortDepositAmount: Optional[str] = None
     mortgageType: Optional[str] = None
     productRateType: Optional[str] = None
     renewalDate: Optional[str] = None

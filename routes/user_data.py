@@ -109,6 +109,7 @@ async def add_mortgage_data(data: MortgageDetails):
                 "paymentMethod": data.paymentMethod,
                 "estPropertyValue": data.estPropertyValue,
                 "mortgageAmount": data.mortgageAmount,
+                "mortDepositAmount": data.mortDepositAmount,
                 "mortgageType": data.mortgageType,
                 "productRateType": data.productRateType,
                 "renewalDate": data.renewalDate,
@@ -172,7 +173,8 @@ async def get_user(username: str):
 ############################### ADMIN LOGIN ####################################
 @user.post("/admin/login", response_model=AdminToken)
 async def login(login_data: LoginModel):
-    admin = authenticate_admin(login_data.username, login_data.password)
+    username = login_data.username
+    admin = authenticate_admin(username.lower(), login_data.password)
     if not admin:
         raise HTTPException(status_code=401, detail="Invalid username or password")
     
@@ -257,6 +259,7 @@ async def update_mortgage(user_id: str, mortgage: ExistingMortgageDetails):
         "mortgage_details.$.paymentMethod": mortgage.paymentMethod,
         "mortgage_details.$.estPropertyValue": mortgage.estPropertyValue,
         "mortgage_details.$.mortgageAmount": mortgage.mortgageAmount,
+        "mortgage_details.$.mortDepositAmount": mortgage.mortDepositAmount,
         "mortgage_details.$.mortgageType": mortgage.mortgageType,
         "mortgage_details.$.productRateType": mortgage.productRateType,
         "mortgage_details.$.renewalDate": mortgage.renewalDate,
