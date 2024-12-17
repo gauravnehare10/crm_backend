@@ -25,3 +25,11 @@ def serialize_document(document):
         return {key: serialize_document(value) for key, value in document.items()}
     else:
         return document
+
+# Delete user  
+def is_valid_object_id(id: str) -> bool:
+    try:
+        ObjectId(id)
+        return True
+    except Exception:
+        return False

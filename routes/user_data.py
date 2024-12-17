@@ -8,7 +8,7 @@ from datetime import timedelta
 from bson import ObjectId
 from typing import List
 import smtplib
-from email_config.econfig import email_address, email_password, msg
+from email_config.econfig import email_address, email_password
 from jose import jwt, JWTError
 from email.message import EmailMessage
 from schemas.schema import *
@@ -23,23 +23,13 @@ async def add_user(request: User):
     try:
         request.username = request.username.lower()
 
-        existing_user_by_username = conn.user.mortgage_details.find_one(
-            {"username": request.username}
-        )
+        existing_user_by_username = conn.user.mortgage_details.find_one({"username": request.username})
         if existing_user_by_username:
-            raise HTTPException(
-                status_code=400,
-                detail="Username already exists."
-            )
+            raise HTTPException(status_code=400, detail="Username already exists.")
         
-        existing_user_by_email = conn.user.mortgage_details.find_one(
-            {"email": request.email}
-        )
+        existing_user_by_email = conn.user.mortgage_details.find_one({"email": request.email})
         if existing_user_by_email:
-            raise HTTPException(
-                status_code=400,
-                detail="Email already exists."
-            )
+            raise HTTPException(status_code=400, detail="Email already exists.")
 
         # Insert the new user
         user = conn.user.mortgage_details.insert_one(dict(request))
@@ -51,6 +41,8 @@ async def add_user(request: User):
             "email": request.email,
             "contactnumber": request.contactnumber
         }
+        msg = EmailMessage()
+
         msg["Subject"] = "Registration Successful"
         msg["From"] = email_address
         msg["To"] = request.email
@@ -67,7 +59,7 @@ async def add_user(request: User):
 
                 Best regards,
                 AAI Financials
-                gauravnehare10@gmail.com
+                {email_address}
             """
         )
 
@@ -114,12 +106,11 @@ async def add_mortgage_data(data: MortgageDetails):
             entry = {
                 "_id": ObjectId(),
                 "hasMortgage": data.hasMortgage,
-                "mortgageCount": data.mortgageCount,
-                "resOrBuyToLet": data.resOrBuyToLet,
-                "mortgageType": data.mortgageType,
+                "paymentMethod": data.paymentMethod,
+                "estPropertyValue": data.estPropertyValue,
                 "mortgageAmount": data.mortgageAmount,
-                "mortgageAmount2": data.mortgageAmount2,
-                "mortgageAmount3": data.mortgageAmount3,
+                "mortgageType": data.mortgageType,
+                "productRateType": data.productRateType,
                 "renewalDate": data.renewalDate,
             }
             # Append to mortgage_details array
@@ -131,11 +122,16 @@ async def add_mortgage_data(data: MortgageDetails):
             entry = {
                 "_id": ObjectId(),
                 "isLookingForMortgage": data.isLookingForMortgage,
-                "newMortgageAmount": data.newMortgageAmount,
-                "ownershipType": data.ownershipType,
-                "annualIncome": data.annualIncome,
-                "depositeAmt": data.depositeAmt,
+                "loanPurpose": data.loanPurpose,
                 "foundProperty": data.foundProperty,
+                "newMortgageType": data.newMortgageType,
+                "depositAmount": data.depositAmount,
+                "purchasePrice": data.purchasePrice,
+                "loanToValue": data.loanToValue,
+                "loanAmount": data.loanAmount,
+                "sourceOfDeposit": data.sourceOfDeposit,
+                "loanTerm": data.loanTerm,
+                "newPaymentMethod": data.newPaymentMethod,
             }
             # Append to new_mortgage_requests array
             conn.user.mortgage_details.update_one(
@@ -180,7 +176,6 @@ async def login(login_data: LoginModel):
     if not admin:
         raise HTTPException(status_code=401, detail="Invalid username or password")
     
-    # Create access token
     access_token = create_access_token(data={"sub": login_data.username}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     admin_details = {
         "id": str(admin["_id"]),
@@ -190,8 +185,6 @@ async def login(login_data: LoginModel):
         "contactnumber": str(admin.get("contactnumber", "")),
     }
     return {"access_token": access_token, "token_type": "bearer", "admin_details": admin_details}
-
-
 
 ############################### DELETE RESPONSE #######################################
 
@@ -207,7 +200,7 @@ async def delete_response(response_id: str, type: str):
     return {"message": "Response deleted successfully"}
 
 
-################################ COUNTS AFTER #############################################
+################################ COUNTS #############################################
 
 @user.get("/count_mortgages")
 async def count_mortgages():
@@ -220,7 +213,6 @@ async def count_mortgages():
     has_mortgage_count = list(has_mortgage_count)
     has_mortgage_count = has_mortgage_count[0]["has_mortgage_count"] if has_mortgage_count else 0
 
-    # Count responses where isLookingForMortgage is true
     looking_for_mortgage_count = conn.user.mortgage_details.aggregate([
         {"$unwind": "$new_mortgage_requests"},
         {"$match": {"new_mortgage_requests.isLookingForMortgage": True}},
@@ -241,23 +233,7 @@ async def count_mortgages():
 
 @user.put("/users/{user_id}")
 async def update_user(user_id: str, user_data: UserUpdate):
-    existing_user_by_username = conn.user.mortgage_details.find_one(
-            {"username": user_data.username}
-        )
-    if existing_user_by_username:
-        raise HTTPException(
-            status_code=400,
-        detail="Username already exists."
-        )
-        
-    existing_user_by_email = conn.user.mortgage_details.find_one(
-        {"email": user_data.email}
-    )
-    if existing_user_by_email:
-        raise HTTPException(
-            status_code=400,
-            detail="Email already exists."
-        )
+    existing_user_by_username = conn.user.mortgage_details.find_one({"username": user_data.username})
     
     object_id = ObjectId(user_id)
     result = conn.user.mortgage_details.update_one(
@@ -278,25 +254,14 @@ async def update_mortgage(user_id: str, mortgage: ExistingMortgageDetails):
     # Build the update payload dynamically
     update_payload = {
         "mortgage_details.$.hasMortgage": mortgage.hasMortgage,
-        "mortgage_details.$.mortgageType": mortgage.mortgageType,
-        "mortgage_details.$.mortgageCount": mortgage.mortgageCount,
+        "mortgage_details.$.paymentMethod": mortgage.paymentMethod,
+        "mortgage_details.$.estPropertyValue": mortgage.estPropertyValue,
         "mortgage_details.$.mortgageAmount": mortgage.mortgageAmount,
-        "mortgage_details.$.resOrBuyToLet": mortgage.resOrBuyToLet,
+        "mortgage_details.$.mortgageType": mortgage.mortgageType,
+        "mortgage_details.$.productRateType": mortgage.productRateType,
         "mortgage_details.$.renewalDate": mortgage.renewalDate,
     }
 
-    # Add or clear additional mortgage amounts based on mortgageCount
-    if mortgage.mortgageCount == "2":
-        update_payload["mortgage_details.$.mortgageAmount2"] = mortgage.mortgageAmount2
-        update_payload["mortgage_details.$.mortgageAmount3"] = None
-    elif mortgage.mortgageCount == "3":
-        update_payload["mortgage_details.$.mortgageAmount2"] = mortgage.mortgageAmount2
-        update_payload["mortgage_details.$.mortgageAmount3"] = mortgage.mortgageAmount3
-    else:  # For "1" or other values
-        update_payload["mortgage_details.$.mortgageAmount2"] = None
-        update_payload["mortgage_details.$.mortgageAmount3"] = None
-
-    # Perform the update operation
     updated = conn.user.mortgage_details.update_one(
         {"_id": ObjectId(user_id), "mortgage_details._id": ObjectId(mortgage.id)},
         {"$set": update_payload},
@@ -310,7 +275,6 @@ async def update_mortgage(user_id: str, mortgage: ExistingMortgageDetails):
 
 @user.put("/update-new-mortgage/{user_id}")
 async def update_mortgage(user_id: str, mortgage: NewMortgageRequest):
-    print(mortgage)
     user = conn.user.mortgage_details.find_one({"_id": ObjectId(user_id)})
     print(user)
     if not user:
@@ -321,11 +285,15 @@ async def update_mortgage(user_id: str, mortgage: NewMortgageRequest):
         {
             "$set": {
                 "new_mortgage_requests.$.isLookingForMortgage": mortgage.isLookingForMortgage,
-                "new_mortgage_requests.$.newMortgageAmount": mortgage.newMortgageAmount,
-                "new_mortgage_requests.$.ownershipType": mortgage.ownershipType,
-                "new_mortgage_requests.$.annualIncome": mortgage.annualIncome,
-                "new_mortgage_requests.$.depositeAmt": mortgage.depositeAmt,
+                "new_mortgage_requests.$.newMortgageType": mortgage.newMortgageType,
                 "new_mortgage_requests.$.foundProperty": mortgage.foundProperty,
+                "new_mortgage_requests.$.depositAmount": mortgage.depositAmount,
+                "new_mortgage_requests.$.purchasePrice": mortgage.purchasePrice,
+                "new_mortgage_requests.$.loanToValue": mortgage.loanToValue,
+                "new_mortgage_requests.$.loanAmount": mortgage.loanAmount,
+                "new_mortgage_requests.$.sourceOfDeposit": mortgage.sourceOfDeposit,
+                "new_mortgage_requests.$.loanTerm": mortgage.loanTerm,
+                "new_mortgage_requests.$.newPaymentMethod": mortgage.newPaymentMethod,
             }
         },
     )
@@ -343,6 +311,7 @@ def send_email(to_email: str, reset_link: str):
     Send the password reset link via email.
     """
     msg = EmailMessage()
+
     msg["Subject"] = "Reset Your Password"
     msg["From"] = email_address
     msg["To"] = to_email
@@ -366,9 +335,6 @@ def send_email(to_email: str, reset_link: str):
 
 @user.post("/password-reset-request")
 async def password_reset_request(request: PasswordResetRequest):
-    """
-    Handle password reset requests.
-    """
     email = request.email
     user = conn.user.mortgage_details.find_one({"email": email})
     if not user:
@@ -376,7 +342,7 @@ async def password_reset_request(request: PasswordResetRequest):
 
     user_id = str(user["_id"])
     token = create_reset_token(user_id)
-    reset_link = f"https://darkslategray-barracuda-138975.hostingersite.com/reset-password?token={token}"
+    reset_link = f"http://localhost:3000/reset-password?token={token}"
     send_email(email, reset_link)
 
     return {"message": "Password reset link sent successfully."}
@@ -410,3 +376,19 @@ async def password_change(change_request: PasswordChangeRequest):
     )
 
     return {"message": "Password has been updated successfully."}
+
+################################ DELETE USER ###################################
+
+@user.delete("/users/delete/{user_id}")
+async def delete_user(user_id: str):
+    # Validate user_id
+    if not is_valid_object_id(user_id):
+        raise HTTPException(status_code=400, detail="Invalid user ID")
+    
+    # Delete user
+    result = conn.user.mortgage_details.delete_one({"_id": ObjectId(user_id)})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {"message": f"User with ID {user_id} has been deleted successfully"}
+

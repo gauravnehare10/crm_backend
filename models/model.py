@@ -27,42 +27,49 @@ class AdminToken(BaseModel):
 class MortgageDetails(BaseModel):
     username: str
     hasMortgage: bool
-    mortgageCount: Optional[str] = None
-    resOrBuyToLet: Optional[str] = None
-    mortgageType: Optional[str] = None
+    paymentMethod: Optional[str] = None
+    estPropertyValue: Optional[str] = None
     mortgageAmount: Optional[str] = None
-    mortgageAmount2: Optional[str] = None
-    mortgageAmount3: Optional[str] = None
+    mortgageType: Optional[str] = None
+    productRateType: Optional[str] = None
     renewalDate: Optional[str] = None
     isLookingForMortgage: Optional[bool] = None
-    newMortgageAmount: Optional[str] = None
-    ownershipType: Optional[str] = None
-    depositeAmt: Optional[str] = None
-    annualIncome: Optional[str] = None
+    newMortgageType: Optional[str] = None
+    loanPurpose: Optional[str] = None
     foundProperty: Optional[str] = None
-
-
+    depositAmount: Optional[str] = None
+    purchasePrice: Optional[str] = None
+    loanToValue: Optional[str] = None
+    loanAmount: Optional[str] = None
+    sourceOfDeposit: Optional[str] = None
+    loanTerm: Optional[str] = None
+    newPaymentMethod: Optional[str] = None
 
 class ExistingMortgageDetails(BaseModel):
     id: str
     hasMortgage: bool
-    mortgageCount: Optional[str] = None
-    mortgageType: Optional[str] = None
-    renewalDate: Optional[str] = None
+    paymentMethod: Optional[str] = None
+    estPropertyValue: Optional[str] = None
     mortgageAmount: Optional[str] = None
-    mortgageAmount2: Optional[str] = None
-    mortgageAmount3: Optional[str] = None
-    resOrBuyToLet: Optional[str] = None
+    mortgageType: Optional[str] = None
+    productRateType: Optional[str] = None
+    renewalDate: Optional[str] = None
 
 
 class NewMortgageRequest(BaseModel):
     id: str
     isLookingForMortgage: bool
-    newMortgageAmount: Optional[str] = None
-    ownershipType: Optional[str] = None
-    annualIncome: Optional[str] = None
-    depositeAmt: Optional[str] = None
+    newMortgageType: Optional[str] = None
+    loanPurpose: Optional[str] = None
     foundProperty: Optional[str] = None
+    depositAmount: Optional[str] = None
+    purchasePrice: Optional[str] = None
+    loanToValue: Optional[str] = None
+    loanAmount: Optional[str] = None
+    sourceOfDeposit: Optional[str] = None
+    loanTerm: Optional[str] = None
+    newPaymentMethod: Optional[str] = None
+
 
 class UserUpdate(BaseModel):
     name: str
