@@ -30,17 +30,17 @@ class MortgageDetails(BaseModel):
     paymentMethod: Optional[str] = None
     estPropertyValue: Optional[str] = None
     mortgageAmount: Optional[str] = None
-    mortDepositAmount: Optional[str] = None
+    loanToValue1: Optional[str] = None
+    furtherAdvance: Optional[str] = None
     mortgageType: Optional[str] = None
     productRateType: Optional[str] = None
     renewalDate: Optional[str] = None
     isLookingForMortgage: Optional[bool] = None
     newMortgageType: Optional[str] = None
-    loanPurpose: Optional[str] = None
     foundProperty: Optional[str] = None
     depositAmount: Optional[str] = None
     purchasePrice: Optional[str] = None
-    loanToValue: Optional[str] = None
+    loanToValue2: Optional[str] = None
     loanAmount: Optional[str] = None
     sourceOfDeposit: Optional[str] = None
     loanTerm: Optional[str] = None
@@ -52,7 +52,8 @@ class ExistingMortgageDetails(BaseModel):
     paymentMethod: Optional[str] = None
     estPropertyValue: Optional[str] = None
     mortgageAmount: Optional[str] = None
-    mortDepositAmount: Optional[str] = None
+    loanToValue1: Optional[str] = None
+    furtherAdvance: Optional[str] = None
     mortgageType: Optional[str] = None
     productRateType: Optional[str] = None
     renewalDate: Optional[str] = None
@@ -62,11 +63,10 @@ class NewMortgageRequest(BaseModel):
     id: str
     isLookingForMortgage: bool
     newMortgageType: Optional[str] = None
-    loanPurpose: Optional[str] = None
     foundProperty: Optional[str] = None
     depositAmount: Optional[str] = None
     purchasePrice: Optional[str] = None
-    loanToValue: Optional[str] = None
+    loanToValue2: Optional[str] = None
     loanAmount: Optional[str] = None
     sourceOfDeposit: Optional[str] = None
     loanTerm: Optional[str] = None

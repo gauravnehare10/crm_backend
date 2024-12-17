@@ -109,7 +109,8 @@ async def add_mortgage_data(data: MortgageDetails):
                 "paymentMethod": data.paymentMethod,
                 "estPropertyValue": data.estPropertyValue,
                 "mortgageAmount": data.mortgageAmount,
-                "mortDepositAmount": data.mortDepositAmount,
+                "loanToValue1": data.loanToValue1,
+                "furtherAdvance": data.furtherAdvance,
                 "mortgageType": data.mortgageType,
                 "productRateType": data.productRateType,
                 "renewalDate": data.renewalDate,
@@ -123,12 +124,11 @@ async def add_mortgage_data(data: MortgageDetails):
             entry = {
                 "_id": ObjectId(),
                 "isLookingForMortgage": data.isLookingForMortgage,
-                "loanPurpose": data.loanPurpose,
                 "foundProperty": data.foundProperty,
                 "newMortgageType": data.newMortgageType,
                 "depositAmount": data.depositAmount,
                 "purchasePrice": data.purchasePrice,
-                "loanToValue": data.loanToValue,
+                "loanToValue2": data.loanToValue2,
                 "loanAmount": data.loanAmount,
                 "sourceOfDeposit": data.sourceOfDeposit,
                 "loanTerm": data.loanTerm,
@@ -259,7 +259,8 @@ async def update_mortgage(user_id: str, mortgage: ExistingMortgageDetails):
         "mortgage_details.$.paymentMethod": mortgage.paymentMethod,
         "mortgage_details.$.estPropertyValue": mortgage.estPropertyValue,
         "mortgage_details.$.mortgageAmount": mortgage.mortgageAmount,
-        "mortgage_details.$.mortDepositAmount": mortgage.mortDepositAmount,
+        "mortgage_details.$.loanToValue1": mortgage.loanToValue1,
+        "mortgage_details.$.furtherAdvance": mortgage.furtherAdvance,
         "mortgage_details.$.mortgageType": mortgage.mortgageType,
         "mortgage_details.$.productRateType": mortgage.productRateType,
         "mortgage_details.$.renewalDate": mortgage.renewalDate,
@@ -292,7 +293,7 @@ async def update_mortgage(user_id: str, mortgage: NewMortgageRequest):
                 "new_mortgage_requests.$.foundProperty": mortgage.foundProperty,
                 "new_mortgage_requests.$.depositAmount": mortgage.depositAmount,
                 "new_mortgage_requests.$.purchasePrice": mortgage.purchasePrice,
-                "new_mortgage_requests.$.loanToValue": mortgage.loanToValue,
+                "new_mortgage_requests.$.loanToValue2": mortgage.loanToValue2,
                 "new_mortgage_requests.$.loanAmount": mortgage.loanAmount,
                 "new_mortgage_requests.$.sourceOfDeposit": mortgage.sourceOfDeposit,
                 "new_mortgage_requests.$.loanTerm": mortgage.loanTerm,
@@ -345,7 +346,7 @@ async def password_reset_request(request: PasswordResetRequest):
 
     user_id = str(user["_id"])
     token = create_reset_token(user_id)
-    reset_link = f"http://localhost:3000/reset-password?token={token}"
+    reset_link = f"https://darkslategray-barracuda-138975.hostingersite.com/reset-password?token={token}"
     send_email(email, reset_link)
 
     return {"message": "Password reset link sent successfully."}
