@@ -1,18 +1,20 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import JSONResponse
-from config.db import conn
 from models.model import *
 from auth.userauth import *
 from datetime import timedelta
 from bson import ObjectId
 from typing import List
 import smtplib
-from email_config.econfig import email_address, email_password
+from config.db import email_address, email_password
 from jose import jwt, JWTError
 from email.message import EmailMessage
 from schemas.schema import *
+from pymongo import MongoClient
+from config.db import MONGO_URL
 
+conn = MongoClient(MONGO_URL)
 user = APIRouter()
 
 templates = Jinja2Templates(directory="templates")

@@ -1,5 +1,12 @@
-from pymongo import MongoClient
+import os 
+from dotenv import find_dotenv, load_dotenv
 
-MONGO_URL = "mongodb+srv://gauravnehare1411:54BiZpXoAtKFSRPH@mymongo1.dozf7.mongodb.net"
+dotenv_path = find_dotenv()
 
-conn = MongoClient(MONGO_URL)
+load_dotenv(dotenv_path)
+
+MONGO_URL = os.getenv("MONGO_URL")
+
+email_address = os.getenv("email_address")
+
+email_password = os.getenv("email_password")
