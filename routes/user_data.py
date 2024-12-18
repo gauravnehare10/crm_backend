@@ -114,6 +114,7 @@ async def add_mortgage_data(data: MortgageDetails):
                 "mortgageType": data.mortgageType,
                 "productRateType": data.productRateType,
                 "renewalDate": data.renewalDate,
+                'reference1': data.reference1,
             }
             # Append to mortgage_details array
             conn.user.mortgage_details.update_one(
@@ -133,6 +134,7 @@ async def add_mortgage_data(data: MortgageDetails):
                 "sourceOfDeposit": data.sourceOfDeposit,
                 "loanTerm": data.loanTerm,
                 "newPaymentMethod": data.newPaymentMethod,
+                'reference2': data.reference2
             }
             # Append to new_mortgage_requests array
             conn.user.mortgage_details.update_one(
@@ -264,6 +266,7 @@ async def update_mortgage(user_id: str, mortgage: ExistingMortgageDetails):
         "mortgage_details.$.mortgageType": mortgage.mortgageType,
         "mortgage_details.$.productRateType": mortgage.productRateType,
         "mortgage_details.$.renewalDate": mortgage.renewalDate,
+        "mortgage_details.$.reference1": mortgage.reference1,
     }
 
     updated = conn.user.mortgage_details.update_one(
@@ -298,6 +301,7 @@ async def update_mortgage(user_id: str, mortgage: NewMortgageRequest):
                 "new_mortgage_requests.$.sourceOfDeposit": mortgage.sourceOfDeposit,
                 "new_mortgage_requests.$.loanTerm": mortgage.loanTerm,
                 "new_mortgage_requests.$.newPaymentMethod": mortgage.newPaymentMethod,
+                "new_mortgage_requests.$.reference2": mortgage.reference2,
             }
         },
     )

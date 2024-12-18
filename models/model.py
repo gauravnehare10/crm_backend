@@ -45,6 +45,8 @@ class MortgageDetails(BaseModel):
     sourceOfDeposit: Optional[str] = None
     loanTerm: Optional[str] = None
     newPaymentMethod: Optional[str] = None
+    reference1: Optional[str] = None
+    reference2: Optional[str] = None
 
 class ExistingMortgageDetails(BaseModel):
     id: str
@@ -57,6 +59,7 @@ class ExistingMortgageDetails(BaseModel):
     mortgageType: Optional[str] = None
     productRateType: Optional[str] = None
     renewalDate: Optional[str] = None
+    reference1: Optional[str] = None
 
 
 class NewMortgageRequest(BaseModel):
@@ -71,6 +74,7 @@ class NewMortgageRequest(BaseModel):
     sourceOfDeposit: Optional[str] = None
     loanTerm: Optional[str] = None
     newPaymentMethod: Optional[str] = None
+    reference2: Optional[str] = None
 
 
 class UserUpdate(BaseModel):
