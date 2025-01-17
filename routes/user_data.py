@@ -395,7 +395,7 @@ async def password_reset_request(request: PasswordResetRequest):
 
     user_id = str(user["_id"])
     token = create_reset_token(user_id)
-    reset_link = f"http://localhost:3000/reset-password?token={token}"
+    reset_link = f"https://papayawhip-rat-324341.hostingersite.com/reset-password?token={token}"
     send_email(email, reset_link)
 
     return {"message": "Password reset link sent successfully."}
