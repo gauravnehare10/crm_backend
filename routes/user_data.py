@@ -11,10 +11,12 @@ from config.db import email_address, email_password
 from jose import jwt, JWTError
 from email.message import EmailMessage
 from schemas.schema import *
-from pymongo import MongoClient
-from config.db import MONGO_URL
+from config.db import conn
+import bcrypt
+import datetime
+from fastapi import HTTPException
 
-conn = MongoClient(MONGO_URL)
+
 user = APIRouter()
 
 templates = Jinja2Templates(directory="templates")
@@ -23,52 +25,81 @@ templates = Jinja2Templates(directory="templates")
 @user.post("/register", response_class=JSONResponse)
 async def add_user(request: User):
     try:
+        # Convert username to lowercase
         request.username = request.username.lower()
 
+        # Check for existing user by username
         existing_user_by_username = conn.user.mortgage_details.find_one({"username": request.username})
         if existing_user_by_username:
             raise HTTPException(status_code=400, detail="Username already exists.")
         
+        # Check for existing user by email
         existing_user_by_email = conn.user.mortgage_details.find_one({"email": request.email})
         if existing_user_by_email:
             raise HTTPException(status_code=400, detail="Email already exists.")
 
-        # Insert the new user
-        user = conn.user.mortgage_details.insert_one(dict(request))
-        
-        # Prepare the user details response
+        # Hash the password
+        hashed_password = bcrypt.hashpw(request.password.encode('utf-8'), bcrypt.gensalt())
+
+        # Prepare user data
+        user_data = {
+            "name": request.name,
+            "username": request.username,
+            "email": request.email,
+            "contactnumber": request.contactnumber,
+            "password": hashed_password.decode('utf-8')  # Store hashed password as a string
+        }
+
+        # Insert user into database
+        user = conn.user.mortgage_details.insert_one(user_data)
+
+        # Generate token
+        token_payload = {
+            "username": request.username,
+            "email": request.email,
+            "exp": datetime.datetime.utcnow() + datetime.timedelta(days=1)  # Token expiration time (1 day)
+        }
+        token = jwt.encode(token_payload, SECRET_KEY, algorithm=ALGORITHM)
+
         user_details = {
             "name": request.name,
             "username": request.username,
             "email": request.email,
-            "contactnumber": request.contactnumber
+            "contactnumber": request.contactnumber,
+            "token": token
         }
+        
+        # Email notification
         msg = EmailMessage()
-
         msg["Subject"] = "Registration Successful"
         msg["From"] = email_address
         msg["To"] = request.email
         msg.set_content(
-            f"""\
-                Name: {request.name}
-                Email: {request.email}
+            f"""
+            Name: {request.name}
+            Email: {request.email}
                 
-                Dear {request.username},
+            Dear {request.username},
 
-                Congratulations! Your registration has been successfully completed.
+            Congratulations! Your registration has been successfully completed.
 
-                Thank you for joining us. We're excited to have you on board. If you have any questions or need assistance, feel free to contact our support team.\n
+            Here is your access token:
+            {token}
 
-                Best regards,
-                AAI Financials
-                {email_address}
-            """
+            Please keep this token secure. If you have any questions or need assistance, feel free to contact our support team.\n
+
+            Best regards,
+            AAI Financials
+            {email_address}
+        """
         )
 
+        # Send email
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
             smtp.login(email_address, email_password)
             smtp.send_message(msg)
 
+        # Return user details and token
         return {"user_details": user_details}
     
     except Exception as e:
@@ -78,12 +109,18 @@ async def add_user(request: User):
 ################################ USER LOGIN #####################################
 @user.post("/login", response_model=Token)
 async def login(login_data: LoginModel):
-    user = authenticate_user(login_data.username, login_data.password)
+    # Authenticate user with username and password
+
+    user = await authenticate_user(login_data.username, login_data.password)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid username or password")
     
-    # Create access token 
-    access_token = create_access_token(data={"sub": login_data.username}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    # Create access token
+    access_token = create_access_token(
+        data={"sub": login_data.username}, 
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+
     user_details = {
         "id": str(user["_id"]),
         "username": user["username"],
@@ -91,12 +128,18 @@ async def login(login_data: LoginModel):
         "name": user.get("name", ""),
         "contactnumber": str(user.get("contactnumber", "")),
     }
-    mortgage = {
-        "hasMortgage": str(user.get("hasMortgage")),
-        "isLookingForMortgage": str(user.get("isLookingForMortgage")),
-        }
-    return {"access_token": access_token, "token_type": "bearer", "user_details": user_details, "mortgage": mortgage}
 
+    mortgage = {
+        "hasMortgage": str(user.get("hasMortgage", "")),
+        "isLookingForMortgage": str(user.get("isLookingForMortgage", "")),
+    }
+
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer", 
+        "user_details": user_details, 
+        "mortgage": mortgage
+    }
 
 ################################# ADD RESPONSE #######################################
 @user.post("/add_mortgage_data/")
@@ -352,7 +395,7 @@ async def password_reset_request(request: PasswordResetRequest):
 
     user_id = str(user["_id"])
     token = create_reset_token(user_id)
-    reset_link = f"https://darkslategray-barracuda-138975.hostingersite.com/reset-password?token={token}"
+    reset_link = f"http://localhost:3000/reset-password?token={token}"
     send_email(email, reset_link)
 
     return {"message": "Password reset link sent successfully."}
@@ -364,25 +407,28 @@ async def password_change(change_request: PasswordChangeRequest):
     new_password = change_request.new_password
 
     try:
-        # Decode token to get the username
+        # Decode token to get the user ID
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        userID: str = payload.get("sub")
-        if userID is None:
+        user_id: str = payload.get("sub")
+        if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid token")
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token has expired")
-    except jwt.JWTError:
+    except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    # Find user and update password
-    user = conn.user.mortgage_details.find_one({"_id": ObjectId(userID)})
+    # Find the user in the database
+    user = conn.user.mortgage_details.find_one({"_id": ObjectId(user_id)})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Hash the new password and update it in the database
-    hashed_password = pwd_context.hash(new_password)
+    # Hash the new password
+    hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
+
+    # Update the user's password in the database
     conn.user.mortgage_details.update_one(
-        {"_id": ObjectId(userID)}, {"$set": {"password": new_password}}
+        {"_id": ObjectId(user_id)}, 
+        {"$set": {"password": hashed_password.decode('utf-8')}}
     )
 
     return {"message": "Password has been updated successfully."}
